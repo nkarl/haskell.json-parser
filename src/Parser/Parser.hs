@@ -21,24 +21,15 @@ newtype Parser a
   }
 
 instance Functor Parser where
-  -- fmap f (Parser x) = Parser \s -> g `fmap` x s
-  -- fmap f (Parser x) = Parser $ fmap (fmap f) . x
-  -- fmap f (Parser x) = Parser $ h . x
-  -- where
-  -- h = fmap g
-  -- g = fmap f
-  fmap f mx = Parser $ h . unwrap' mx
-    where
-      h = fmap g
-      g = fmap f
-      unwrap' (Parser x) = x -- TODO: refactor with Lens to `get` from the nested Maybe Tuple
+  fmap f (Parser fx) = Parser \s -> do
+    (s', x) <- fx s
+    Just (s', f x)
 
 instance Applicative Parser where
-  (<*>) (Parser f) (Parser x) =
-    Parser \s -> do
-      (s', g) <- f s
-      let h = x s'
-      fmap g <$> h
+  (Parser ff) <*> (Parser fx) = Parser \s -> do
+    (s', f) <- ff s
+    (s'', x) <- fx s'
+    Just (s'', f x)
   pure x = Parser \s -> Just (s, x)
 
 type Parsed a = String -> Maybe (String, a)
