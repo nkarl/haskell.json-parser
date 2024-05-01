@@ -62,13 +62,15 @@ executable haskell-json
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    -- other-modules:
+    other-modules:    Parser.Parser,
+                      Miscs.Miscs
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.17.2.1
+    build-depends:    base ^>=4.17.2.1,
+                      pretty-simple
 
     -- Directories containing source files.
     hs-source-dirs:   app
