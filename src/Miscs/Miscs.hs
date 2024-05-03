@@ -1,5 +1,3 @@
-{-# LANGUAGE StarIsType #-}
-
 module Miscs.Miscs where
 
 import Text.Pretty.Simple (pPrint)
@@ -35,8 +33,9 @@ pull' :: [a] -> [a] -> [a]
 -- pull' acc (x:xs) = pull ([x] ++ acc) xs
 pull' = foldl $ flip (:)
 
+-- | a GADT for pretty printing the output of functions.
 data Result where
-  Result :: {name :: String, result :: String} -> Result
+  Result :: {title :: String, value :: String} -> Result
   deriving (Show)
 
 test :: IO ()
@@ -44,21 +43,21 @@ test = do
   let s = "abcde"
   pPrint $
     Result
-      { name = "sumL " ++ "[1..10_000_000]",
-        result = show (sumL 0 [1 .. 10_000_000] :: Integer)
+      { title = "sumL " ++ "[1..10_000_000]",
+        value = show (sumL 0 [1 .. 10_000_000] :: Integer)
       }
   pPrint $
     Result
-      { name = "sumR " ++ "[1..10_000_000]",
-        result = show (sumR 0 [1 .. 10_000_000] :: Integer)
+      { title = "sumR " ++ "[1..10_000_000]",
+        value = show (sumR 0 [1 .. 10_000_000] :: Integer)
       }
   pPrint $
     Result
-      { name = "pull one element at a time from " ++ s,
-        result = pull [] s
+      { title = "pull one element at a time from " ++ s,
+        value = pull [] s
       }
   pPrint $
     Result
-      { name = "pull one element at a time from " ++ s ++ " (reversed)",
-        result = pull' [] s
+      { title = "pull one element at a time from " ++ s ++ " (reversed)",
+        value = pull' [] s
       }
