@@ -4,7 +4,6 @@
 
 module Parser.Json where
 
-import Data.Kind (Type)
 import Miscs.Miscs (Result (..))
 import Text.Pretty.Simple (pPrint)
 import Prelude
