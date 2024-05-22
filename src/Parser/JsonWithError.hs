@@ -116,21 +116,31 @@ test :: IO ()
 test = do
   pPrint $
     Result
-      { title = "parse a char from a string `aaa`,leaving (\"aa\", 'a')"
-      , value = show $ (unwrap $ parseChar 'n') "aaa"
+      { title = "parse a char 'a' from a string `aaa`, returning Right (\"aa\", 'a')"
+      , value = show $ (unwrap $ parseChar 'a') "aaa"
       }
   pPrint $
     Result
-      { title = "parse a string continuously"
+      { title = "parse a char 'b' from a string `aaa`, returning Left EOF"
+      , value = show $ (unwrap $ parseChar 'b') "aaa"
+      }
+  pPrint $
+    Result
+      { title = "parse a char from an empty string ``, returning Left EOF"
+      , value = show $ (unwrap $ parseChar 'n') ""
+      }
+  pPrint $
+    Result
+      { title = "parse a string continuously, returning the a new string with same content"
       , value = show $ unwrap parseString "abcde"
       }
   pPrint $
     Result
-      { title = "parse a string continuously using sequenceA"
+      { title = "parse a substring `abc` from `abcdefgh` using sequenceA"
       , value = show $ (unwrap . parseString1) "abc" "abcdefgh"
       }
   pPrint $
     Result
-      { title = "parse a string continuously using traverse"
+      { title = "parse a substring `abc` from `abcdefgh` using traverse"
       , value = show $ (unwrap . parseString2) "abc" "abcdefgh"
       }
