@@ -1,9 +1,11 @@
 module Main where
 
 --import Miscs.Miscs as Miscs
-import Parser.Parser as Parser
+--import Parser.String
+--import Parser.Json
+import Parser.JsonWithError
 
 main :: IO ()
 main = do
-  --Miscs.test
-  Parser.test
+  --Parser.String.test
+  Parser.JsonWithError.test
