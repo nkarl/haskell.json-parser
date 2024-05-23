@@ -2,7 +2,7 @@
 
 {-# HLINT ignore "Use traverse" #-}
 
-module Parser.JsonWithError where
+module Parser.JsonWithErrorHandling where
 
 import Data.Kind (Type)
 import Miscs.Miscs (Result (..))
@@ -22,7 +22,7 @@ type State a = (String, a)
 
 type Process e a = String -> Either e (State a)
 
---newtype Parser e a = Parser (Failable e => Process e a)
+-- newtype Parser e a = Parser (Failable e => Process e a)
 newtype Parser e a = Parser
   { runParser :: (Failable e) => Process e a
   }
@@ -41,9 +41,9 @@ instance Failable {- with -} Error where
 instance Functor (Parser e) where
   fmap f (Parser px) =
     Parser $ h . px
-    where
-      h = fmap g
-      g = fmap f
+   where
+    h = fmap g
+    g = fmap f
 
 {--
    The composing style works for `fmap` because `f` is first-ordered.
@@ -84,11 +84,11 @@ unwrap = unwrap'
 -- | parses a single character from a string.
 parseChar :: Char -> Parser e Char
 parseChar x = Parser f
-  where
-    f (y : ys) -- = Just (ys, y)
-      | x == y = Right (ys, y)
-      | otherwise = Left eof
-    f [] = Left eof
+ where
+  f (y : ys) -- = Just (ys, y)
+    | x == y = Right (ys, y)
+    | otherwise = Left eof
+  f [] = Left eof
 
 pull :: [a] -> [a] -> [a]
 pull = foldr (:)
@@ -115,31 +115,46 @@ test :: IO ()
 test = do
   pPrint $
     Result
-      { title = "parse a char 'a' from a string `aaa`, returning Right (\"aa\", 'a')",
-        value = show $ (unwrap $ parseChar 'a') "aaa"
+      { title = "parse a char 'a' from a string `aaa`, returning Right (\"aa\", 'a')"
+      , value = show $ (unwrap $ parseChar 'a') "aaa"
       }
   pPrint $
     Result
-      { title = "parse a char 'b' from a string `aaa`, returning Left EOF",
-        value = show $ (unwrap $ parseChar 'b') "aaa"
+      { title = "parse a char 'b' from a string `aaa`, returning Left EOF"
+      , value = show $ (unwrap $ parseChar 'b') "aaa"
       }
   pPrint $
     Result
-      { title = "parse a char from an empty string ``, returning Left EOF",
-        value = show $ (unwrap $ parseChar 'n') ""
+      { title = "parse a char from an empty string ``, returning Left EOF"
+      , value = show $ (unwrap $ parseChar 'n') ""
       }
   pPrint $
     Result
-      { title = "parse a string continuously, returning the a new string with same content",
-        value = show $ unwrap parseString "abcde"
+      { title = "parse a string continuously, returning the a new string with same content"
+      , value = show $ unwrap parseString "abcde"
       }
   pPrint $
     Result
-      { title = "parse a substring `abc` from `abcdefgh` using sequenceA",
-        value = show $ (unwrap . parseString1) "abc" "abcdefgh"
+      { title = "parse a substring `abc` from `abcdefgh` using sequenceA"
+      , value = show $ (unwrap . parseString1) "abc" "abcdefgh"
       }
   pPrint $
     Result
-      { title = "parse a substring `abc` from `abcdefgh` using traverse",
-        value = show $ (unwrap . parseString2) "abc" "abcdefgh"
+      { title = "parse a substring `xyz` from `abcdefgh` using sequenceA"
+      , value = show $ (unwrap . parseString1) "cba" "abcdefgh"
+      }
+  pPrint $
+    Result
+      { title = "parse a substring `abc` from `` using sequenceA"
+      , value = show $ (unwrap . parseString1) "abc" ""
+      }
+  pPrint $
+    Result
+      { title = "parse a substring `abc` from `abcdefgh` using traverse"
+      , value = show $ (unwrap . parseString2) "abc" "abcdefgh"
+      }
+  pPrint $
+    Result
+      { title = "parse a substring `abc` from `` using traverse"
+      , value = show $ (unwrap . parseString2) "abc" ""
       }
