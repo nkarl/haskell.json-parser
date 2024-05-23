@@ -24,7 +24,7 @@ type Process e a = String -> Either e (State a)
 
 -- newtype Parser e a = Parser (Failable e => Process e a)
 newtype Parser e a = Parser
-  { runParser :: (Failable e) => Process e a
+  { runParser :: Process e a
   }
 
 data Error = EOF deriving (Show)
@@ -57,13 +57,14 @@ instance Functor (Parser e) where
   APPLICATIVE
 --}
 instance Applicative (Parser e) where
-  (Parser pf) <*> (Parser px) =
+  (<*>) (Parser pf) (Parser px) =
     Parser $ \s -> do
       (s', f) <- pf s
       (s'', x) <- px s'
       Right (s'', f x)
   pure x =
-    Parser $ \s -> Right (s, x)
+    Parser $ \s -> do
+      Right (s, x)
 
 {--
    MONAD
@@ -75,33 +76,38 @@ instance Monad (Parser e) where
       Parser g <- Right (f x)
       g s'
 
-unwrap' :: forall e a. (Failable e) => Parser e a -> Process e a
+unwrap' :: forall e a. Parser e a -> Process e a
 unwrap' (Parser x) = x
 
 unwrap :: Parser Error a -> Process Error a
 unwrap = unwrap'
 
--- | parses a single character from a string.
-parseChar :: Char -> Parser e Char
-parseChar x = Parser f
+-- | parses a single character from a string. Can fail.
+parseChar :: (Failable e) => Char -> Parser e Char
+parseChar x =
+  Parser $ \s -> do
+    f s
  where
-  f (y : ys) -- = Just (ys, y)
+  f [] = Left eof
+  f (y : ys)
     | x == y = Right (ys, y)
     | otherwise = Left eof
-  f [] = Left eof
 
-pull :: [a] -> [a] -> [a]
-pull = foldr (:)
+_pull :: [a] -> [a] -> [a]
+_pull = foldr (:)
 
+{- | parses a substring from a string.
+  Can not fail, because `_pull` cannot fail on all strings, including the empty string [].
+-}
 parseString :: Parser e String
 parseString =
   Parser $ \s -> do
-    Right (s, pull s [])
+    Right (s, _pull s [])
 
-parseString1 :: String -> Parser e String
+parseString1 :: (Failable e) => String -> Parser e String
 parseString1 = sequenceA . map parseChar
 
-parseString2 :: String -> Parser e String
+parseString2 :: (Failable e) => String -> Parser e String
 parseString2 = traverse parseChar
 
 -- NOTE: no proper error reporting
@@ -116,22 +122,27 @@ test = do
   pPrint $
     Result
       { title = "parse a char 'a' from a string `aaa`, returning Right (\"aa\", 'a')"
-      , value = show $ (unwrap $ parseChar 'a') "aaa"
+      , value = show $ (unwrap . parseChar) 'a' "aaa"
       }
   pPrint $
     Result
       { title = "parse a char 'b' from a string `aaa`, returning Left EOF"
-      , value = show $ (unwrap $ parseChar 'b') "aaa"
+      , value = show $ (unwrap . parseChar) 'b' "aaa"
       }
   pPrint $
     Result
       { title = "parse a char from an empty string ``, returning Left EOF"
-      , value = show $ (unwrap $ parseChar 'n') ""
+      , value = show $ (unwrap . parseChar) 'n' ""
       }
   pPrint $
     Result
       { title = "parse a string continuously, returning the a new string with same content"
       , value = show $ unwrap parseString "abcde"
+      }
+  pPrint $
+    Result
+      { title = "parse a string continuously, returning the a new string with same content"
+      , value = show $ unwrap parseString []
       }
   pPrint $
     Result
@@ -152,6 +163,11 @@ test = do
     Result
       { title = "parse a substring `abc` from `abcdefgh` using traverse"
       , value = show $ (unwrap . parseString2) "abc" "abcdefgh"
+      }
+  pPrint $
+    Result
+      { title = "parse a substring `xyz` from `abcdefgh` using traverse"
+      , value = show $ (unwrap . parseString2) "cba" "abcdefgh"
       }
   pPrint $
     Result
