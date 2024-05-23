@@ -28,9 +28,9 @@ newtype Parser a
 instance Functor Parser where
   fmap f (Parser px) =
     Parser $ h . px
-    where
-      h = fmap g
-      g = fmap f
+   where
+    h = fmap g
+    g = fmap f
 
 {--
    The composing style works for `fmap` because `f` is first-ordered.
@@ -68,11 +68,11 @@ unwrap (Parser x) = x
 -- | parses a single character from a string.
 parseChar :: Char -> Parser Char
 parseChar x = Parser f
-  where
-    f (y : ys) -- = Just (ys, y)
-      | x == y = Just (ys, y)
-      | otherwise = Nothing
-    f [] = Nothing
+ where
+  f (y : ys) -- = Just (ys, y)
+    | x == y = Just (ys, y)
+    | otherwise = Nothing
+  f [] = Nothing
 
 pull :: [a] -> [a] -> [a]
 pull = foldr (:)
@@ -99,21 +99,21 @@ test :: IO ()
 test = do
   pPrint $
     Result
-      { title = "parse a char from a string `aaa`,leaving (\"aa\", 'a')",
-        value = show $ (unwrap $ parseChar 'n') "aaa"
+      { title = "parse a char from a string `aaa`,leaving (\"aa\", 'a')"
+      , value = show $ (unwrap $ parseChar 'n') "aaa"
       }
   pPrint $
     Result
-      { title = "parse a string continuously",
-        value = show $ unwrap parseString "abcde"
+      { title = "parse a string continuously"
+      , value = show $ unwrap parseString "abcde"
       }
   pPrint $
     Result
-      { title = "parse a string continuously",
-        value = show $ (unwrap . parseString1) "abc" "abcdefgh"
+      { title = "parse a string continuously"
+      , value = show $ (unwrap . parseString1) "abc" "abcdefgh"
       }
   pPrint $
     Result
-      { title = "parse a string continuously",
-        value = show $ (unwrap . parseString2) "abc" "abcdefgh"
+      { title = "parse a string continuously"
+      , value = show $ (unwrap . parseString2) "abc" "abcdefgh"
       }
