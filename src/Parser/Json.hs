@@ -44,7 +44,7 @@ instance Functor Parser where
   APPLICATIVE
 --}
 instance Applicative Parser where
-  (Parser pf) <*> (Parser px) =
+  (<*>) (Parser pf) (Parser px) =
     Parser $ \s -> do
       (s', f) <- pf s
       (s'', x) <- px s'

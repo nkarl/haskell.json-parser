@@ -97,7 +97,7 @@ _pull :: [a] -> [a] -> [a]
 _pull = foldr (:)
 
 {- | parses a substring from a string.
-  Can not fail, because `_pull` cannot fail on all strings, including the empty string [].
+ Can not fail, because `_pull` cannot fail on all strings, including the empty string [].
 -}
 parseString :: Parser e String
 parseString =

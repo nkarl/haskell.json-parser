@@ -4,11 +4,6 @@ import Text.Pretty.Simple (pPrint)
 import Prelude
 
 {--
-   NOTE: foldl (+) is much more efficient than foldr (+).
-   The two operations start diverging in time complexity around 10_000_000, where
-   sumL does in ~400ms and sumR does in ~900ms. The rate of diverging accelarates
-   for every additional zero.
-
    foldl is said to be
     - lazy in the accumulator
     - good for structs with efficient RTL sequencing and an operator with lazy left arg.
@@ -35,29 +30,41 @@ pull' = foldl $ flip (:)
 
 -- | a GADT for pretty printing the output of functions.
 data Result where
-  Result :: {title :: String, value :: String} -> Result
+  Result ::
+    { title :: String
+    , value :: String
+    } ->
+    Result
   deriving (Show)
+
+{--
+  NOTE: foldl (+) is much more efficient than foldr (+) for lists (a LTR structure).
+    The two operations start diverging in time complexity around 10_000_000.
+      - sumL runs in ~400ms
+      - sumR runs in ~900ms
+    The rate of diverging accelarates for every additional zero.
+--}
 
 test :: IO ()
 test = do
   let s = "abcde"
   pPrint $
     Result
-      { title = "sumL " ++ "[1..10_000_000]",
-        value = show (sumL 0 [1 .. 10_000_000] :: Integer)
+      { title = "sumL " ++ "[1..10_000_000]"
+      , value = show (sumL 0 [1 .. 10_000_000] :: Integer)
       }
   pPrint $
     Result
-      { title = "sumR " ++ "[1..10_000_000]",
-        value = show (sumR 0 [1 .. 10_000_000] :: Integer)
+      { title = "sumR " ++ "[1..10_000_000]"
+      , value = show (sumR 0 [1 .. 10_000_000] :: Integer)
       }
   pPrint $
     Result
-      { title = "pull one element at a time from " ++ s,
-        value = pull [] s
+      { title = "pull one element at a time from " ++ s
+      , value = pull [] s
       }
   pPrint $
     Result
-      { title = "pull one element at a time from " ++ s ++ " (reversed)",
-        value = pull' [] s
+      { title = "pull one element at a time from " ++ s ++ " (reversed)"
+      , value = pull' [] s
       }

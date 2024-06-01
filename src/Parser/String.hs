@@ -53,10 +53,10 @@ instance Functor (Parser e) where
 --}
 instance Applicative (Parser e) where
   -- apply :: m (a -> b) -> m a -> m b
-  (<*>) (Parser mf) (Parser mx) =
+  (<*>) (Parser pf) (Parser px) =
     Parser $ \s -> do
-      (s', f) <- mf s
-      (s'', x) <- mx s'
+      (s', f) <- pf s
+      (s'', x) <- px s'
       Right (s'', f x)
 
   -- pure :: a -> m a
