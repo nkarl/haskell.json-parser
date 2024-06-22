@@ -1,11 +1,13 @@
 module Main where
 
--- import Miscs.Miscs as Miscs
+--import Miscs.Miscs as Miscs
 -- import Parser.String
--- import Parser.Jsonn
-import Parser.JsonWithErrorHandling
+import Parser.Json
+--import Parser.JsonWithErrorHandling
 
 main :: IO ()
 main = do
-  -- Parser.String.testt
-  Parser.JsonWithErrorHandling.test
+  --Miscs.test
+  -- Parser.String.test
+  --Parser.JsonWithErrorHandling.test
+  Parser.Json.test

@@ -4,8 +4,9 @@
 
 module Parser.Json where
 
-import Miscs.Miscs (Result (..))
-import Text.Pretty.Simple (pPrint)
+import Test.HUnit
+
+import Control.Applicative (Alternative (empty, (<|>)))
 import Prelude
 
 data JsonValue
@@ -29,15 +30,14 @@ instance Functor Parser where
   fmap f (Parser px) =
     Parser $ h . px
    where
-    h = fmap g
-    g = fmap f
+    h = fmap (fmap f)
 
 {--
    The composing style works for `fmap` because `f` is first-ordered.
    We only need to peel off the layers of `Parser a` and then apply `f` to the inner most type.
-   `Parser a` is in fact a layered monad `m1 (m2 a)` where
+   NOTE: `Parser a` is double-layered monad `m1 (m2 a)` where
       `m1 :: Maybe`
-      `m2 :: Tuple`, more accurately the partially applied `Tuple String`
+      `m2 :: Tuple`, more accurately the curried 2-tuple `(String, ...)`
 --}
 
 {--
@@ -51,6 +51,11 @@ instance Applicative Parser where
       Just (s'', f x)
   pure x =
     Parser $ \s -> Just (s, x)
+
+instance Alternative Parser where
+  empty = Parser $ const Nothing
+  (<|>) (Parser p1) (Parser p2) =
+    Parser $ \s -> p1 s <|> p2 s
 
 {--
    MONAD
@@ -88,6 +93,13 @@ parseString1 = sequenceA . map parseChar
 parseString2 :: String -> Parser String
 parseString2 = traverse parseChar
 
+jsonBool :: Parser JsonValue
+jsonBool = f <$> (parseString1 "true" <|> parseString1 "false")
+ where
+  f "true" = JsonBool True
+  f "false" = JsonBool False
+  f _ = undefined
+
 -- NOTE: no proper error reporting
 jsonValue :: Parser JsonValue
 jsonValue = undefined
@@ -97,23 +109,39 @@ jsonNull = undefined
 
 test :: IO ()
 test = do
-  pPrint $
-    Result
-      { title = "parse a char from a string `aaa`,leaving (\"aa\", 'a')"
-      , value = show $ (unwrap $ parseChar 'n') "aaa"
-      }
-  pPrint $
-    Result
-      { title = "parse a string continuously"
-      , value = show $ unwrap parseString "abcde"
-      }
-  pPrint $
-    Result
-      { title = "parse a string continuously"
-      , value = show $ (unwrap . parseString1) "abc" "abcdefgh"
-      }
-  pPrint $
-    Result
-      { title = "parse a string continuously"
-      , value = show $ (unwrap . parseString2) "abc" "abcdefgh"
-      }
+  let
+    tests =
+      TestList
+        [ TestCase
+            ( let expected = Just ("aa", 'a')
+                  actual = (unwrap $ parseChar 'a') "aaa"
+                  title = "parse one char `a` from the string `aaa`, producing (\"aa\", 'a')"
+               in assertEqual title expected actual
+            )
+        , TestCase
+            ( let expected = Nothing
+                  actual = (unwrap $ parseChar 'n') "aaa"
+                  title = "parse one char `n` from the string `aaa`, producing Nothing"
+               in assertEqual title expected actual
+            )
+        , TestCase
+            ( let expected = Just ("abcde", "abcde")
+                  actual = unwrap parseString "abcde"
+                  title = "parse a string continuously"
+               in assertEqual title expected actual
+            )
+        , TestCase
+            ( let expected = Just ("defgh", "abc")
+                  actual = (unwrap . parseString1) "abc" "abcdefgh"
+                  title = "parse a string continuously"
+               in assertEqual title expected actual
+            )
+        , TestCase
+            ( let expected = Just ("defgh", "abc")
+                  actual = (unwrap . parseString2) "abc" "abcdefgh"
+                  title = "parse a string continuously"
+               in assertEqual title expected actual
+            )
+        ]
+  _ <- runTestTT tests
+  pure ()

@@ -9,77 +9,82 @@ import Miscs.Miscs (Result (..))
 import Text.Pretty.Simple (pPrint)
 import Prelude
 
+import Control.Applicative ((<|>), Alternative (empty))
+
 data JsonValue
   = JsonNull
   | JsonBool Bool
   | JsonNumber Integer -- NOTE: no support for floats
   | JsonString String
   | JsonArray [JsonValue]
-  | JsonObject [(String, JsonValue)]
+  | JsonObject [Element JsonValue]
   deriving (Show, Eq)
 
-type State a = (String, a)
+type Element a = (String, a)
+type Process e a = String -> Either e (String, a)
 
-type Process e a = String -> Either e (State a)
-
--- newtype Parser e a = Parser (Failable e => Process e a)
-newtype Parser e a = Parser
-  { runParser :: Process e a
+newtype Parser e a
+  = Parser
+  { runParser :: String -> Either e (String, a)
   }
 
-data Error = EOF deriving (Show)
+data FailReason = EOF | Other deriving (Show)
 
-class Failable {- with -} (e :: Type) where
-  eof :: e
+class Failable {- with -} (reason :: Type) where
+  eof :: reason
 
-instance Failable {- with -} Error where
+instance Failable {- with -} FailReason where
   eof = EOF
 
 {--
   FUNCTOR
+
+  The composing style works for `fmap` because `f` is first-ordered.
+  We only need to peel off the layers of `Parser a` and then apply `f` to the inner most type.
+  `Parser a` is in fact a layered monad `m1 (m2 a)` where
+    `m1 :: Maybe`
+    `m2 :: Tuple`, more accurately the partially applied `Tuple String`
 --}
 instance Functor (Parser e) where
-  fmap f (Parser px) =
-    Parser $ h . px
+  fmap f (Parser mx) =
+    Parser $ h . mx
    where
     h = fmap g
     g = fmap f
 
 {--
-   The composing style works for `fmap` because `f` is first-ordered.
-   We only need to peel off the layers of `Parser a` and then apply `f` to the inner most type.
-   `Parser a` is in fact a layered monad `m1 (m2 a)` where
-      `m1 :: Maybe`
-      `m2 :: Tuple`, more accurately the partially applied `Tuple String`
---}
-
-{--
   APPLICATIVE
 --}
 instance Applicative (Parser e) where
-  (<*>) (Parser pf) (Parser px) =
+  (<*>) (Parser mf) (Parser mx) =
     Parser $ \s -> do
-      (s', f) <- pf s
-      (s'', x) <- px s'
+      (s', f) <- mf s
+      (s'', x) <- mx s'
       Right (s'', f x)
   pure x =
     Parser $ \s -> do
       Right (s, x)
 
+--instance (Failable e) => Alternative (Parser e) where
+  --empty = Parser $ \_ -> Left eof
+  --(<|>) (Parser p1) (Parser p2) =
+    --Parser $ \s -> p1 s <|> p2 s
+
+
 {--
    MONAD
 --}
 instance Monad (Parser e) where
-  (>>=) (Parser px) f =
+  (>>=) (Parser mx) f =
     Parser $ \s -> do
-      (s', x) <- px s
+      (s', x) <- mx s
       Parser g <- Right (f x)
       g s'
 
 unwrap' :: forall e a. Parser e a -> Process e a
 unwrap' (Parser x) = x
 
-unwrap :: Parser Error a -> Process Error a
+unwrap :: Parser FailReason a -> Process FailReason a
 unwrap = unwrap'
 
 -- | parses a single character from a string. Can fail.
@@ -105,10 +110,17 @@ parseString =
     Right (s, _pull s [])
 
 parseString1 :: (Failable e) => String -> Parser e String
-parseString1 = sequenceA . map parseChar
+parseString1 = sequenceA . (<$>) parseChar
 
 parseString2 :: (Failable e) => String -> Parser e String
 parseString2 = traverse parseChar
+
+--jsonBool :: Parser e JsonValue
+--jsonBool = f <$> (parseString1 "true" <|> parseString1 "false")
+  --where
+    --f "true" = JsonBool True
+    --f "false" = JsonBool False
+    --f _       = undefined
 
 -- NOTE: no proper error reporting
 jsonValue :: Parser e JsonValue

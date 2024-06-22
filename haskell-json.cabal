@@ -75,6 +75,7 @@ executable haskell-json
     build-depends:
         base ^>=4.17.2.1,
         pretty-simple,
+        HUnit
 
     -- Directories containing source files.
     hs-source-dirs:   src
