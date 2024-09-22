@@ -1,42 +1,33 @@
 {
-  description = "hsjson";
+  description = "A Nix flake for a Haskell development environment.";
 
   inputs = {
-
-    haskellNix = {
-      url = "github:input-output-hk/haskell.nix";
-    };
-    nixpkgs = {
-      follows = "haskellNix/nixpkgs-unstable";
-    };
-    flake-utils = {
-      url = "github:numtide/flake-utils";
-    };
+    haskellNix.url = "github:input-output-hk/haskell.nix";
+    nixpkgs.follows = "haskellNix/nixpkgs-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
   };
 
   outputs = { self, nixpkgs, flake-utils, haskellNix, ... }:
-    flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
+    flake-utils.lib.eachDefaultSystem (system:
 
     let
-      
       overlays = [
         haskellNix.overlay (final: prev: {
-          haskell-json =
-            final.haskell-nix.project' {
-              src = ./.;
-              compiler-nix-name = "ghc966";
+          haskell-json = final.haskell-nix.project' {
+            src = ./.;
+            compiler-nix-name = "ghc966";
 
-              shell.tools = {
-                cabal = {};
-                hlint = {};
-                stack = "3.1.1";
-                haskell-language-server = {};
-              };
-
-              shell.buildInputs = with pkgs; [
-                nixpkgs-fmt
-              ];
+            shell.tools = {
+              cabal = {};
+              hlint = {};
+              stack = "3.1.1";
+              haskell-language-server = {};
             };
+
+            shell.buildInputs = with pkgs; [
+              nixpkgs-fmt
+            ];
+          };
         })
       ];
 
@@ -44,9 +35,8 @@
 
       flake = pkgs.haskell-json.flake { };
 
-    in flake // {
-      packages.default = flake.packages."hsjson:exe:hsjson";
-    });
+    in
+      flake // { packages.default = flake.packages."hsjson:exe:hsjson"; });
 }      
 
 #{
