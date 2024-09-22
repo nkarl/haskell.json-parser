@@ -10,4 +10,4 @@ main = do
   --Miscs.test
   -- Parser.String.test
   --Parser.JsonWithErrorHandling.test
-  Parser.Json.test
+  putStrLn "Hello!"

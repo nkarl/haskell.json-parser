@@ -4,6 +4,7 @@
 
 module Parser.Json where
 
+import Control.Monad ((<=<), (>=>))
 import Test.HUnit
 
 import Control.Applicative (Alternative (empty, (<|>)))
@@ -18,8 +19,7 @@ data JsonValue
   | JsonObject [(String, JsonValue)]
   deriving (Show, Eq)
 
-newtype Parser a
-  = Parser
+newtype Parser a = Parser
   { runParser :: String -> Maybe (String, a)
   }
 
@@ -45,10 +45,20 @@ instance Functor Parser where
 --}
 instance Applicative Parser where
   (<*>) (Parser pf) (Parser px) =
-    Parser $ \s -> do
-      (s', f) <- pf s
-      (s'', x) <- px s'
-      Just (s'', f x)
+    -- Parser $ \s -> do
+    --    (s1, f) <- pf s
+    --    (s2, x) <- px s1
+    --    Just (s2, f x)
+    -- Parser $ \s ->
+    --    pf s >>= \(s1, f) ->
+    --    px s1 >>= \(s2, x) ->
+    --    Just (s2, f x)
+    Parser $
+      pf
+        >=> ( \(s1, f) ->
+                px s1 >>= \(s2, x) ->
+                  Just (s2, f x)
+            )
   pure x =
     Parser $ \s -> Just (s, x)
 
@@ -106,48 +116,3 @@ jsonValue = undefined
 
 jsonNull :: Parser JsonValue
 jsonNull = undefined
-
-test :: IO ()
-test = do
-  let
-    tests =
-      TestList
-        [ TestCase
-            ( let expected = Just ("aa", 'a')
-                  actual = (unwrap $ parseChar 'a') "aaa"
-                  title = "parse one char `a` from the string `aaa`, producing (\"aa\", 'a')"
-               in assertEqual title expected actual
-            )
-        , TestCase
-            ( let expected = Nothing
-                  actual = (unwrap $ parseChar 'x') "aaa"
-                  title = "parse one char `x` not in the string `aaa`, producing Nothing"
-               in assertEqual title expected actual
-            )
-        , TestCase
-            ( let expected = Just ("abcde", "abcde")
-                  actual = unwrap parseString "abcde"
-                  title = "parse en entire string, keeping the original for comparison"
-               in assertEqual title expected actual
-            )
-        , TestCase
-            ( let expected = Just ("defgh", "abc")
-                  actual = (unwrap . parseString1) "abc" "abcdefgh"
-                  title = "parse a substring `abc` from a string `abcdefgh"
-               in assertEqual title expected actual
-            )
-        , TestCase
-            ( let expected = Just ("defgh", "abc")
-                  actual = (unwrap . parseString2) "abc" "abcdefgh"
-                  title = "parse a substring `abc` from a string `abcdefgh`"
-               in assertEqual title expected actual
-            )
-        , TestCase
-            ( let expected = Nothing
-                  actual = (unwrap . parseString1) "xbc" "abcdefgh"
-                  title = "parse a substring `xbc` not in a string `abcdefgh`, producing Nothing"
-               in assertEqual title expected actual
-            )
-        ]
-  _ <- runTestTT tests
-  pure ()

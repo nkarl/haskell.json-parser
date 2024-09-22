@@ -73,12 +73,28 @@ executable haskell-json
 
     -- Other library packages from which modules are imported.
     build-depends:
-        base ^>=4.17.2.1,
+        base ^>=4.18.2.1,
         pretty-simple,
         HUnit
 
     -- Directories containing source files.
-    hs-source-dirs:   src
+    hs-source-dirs:   ., src
 
     -- Base language which the package is written in.
     default-language: GHC2021
+
+library
+    hs-source-dirs: src
+    exposed-modules:
+      Parser.Json
+    build-depends:
+        base ^>=4.18.2.1,
+        HUnit
+
+test-suite test-haskell-json
+    type: exitcode-stdio-1.0
+    main-is: tests/Parser/Json.Test.hs
+    build-depends:
+        base ^>=4.18.2.1,
+        HUnit,
+        haskell-json
