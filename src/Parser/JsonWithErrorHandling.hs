@@ -9,7 +9,7 @@ import Miscs.Miscs (Result (..))
 import Text.Pretty.Simple (pPrint)
 import Prelude
 
-import Control.Applicative ((<|>), Alternative (empty))
+import Control.Applicative (Alternative (empty), (<|>))
 
 data JsonValue
   = JsonNull
@@ -21,19 +21,16 @@ data JsonValue
   deriving (Show, Eq)
 
 type Element a = (String, a)
-type Process e a = String -> Either e (String, a)
+type Process e a = String -> Either e (Element a)
 
-newtype Parser e a
-  = Parser
-  { runParser :: String -> Either e (String, a)
-  }
+newtype Parser e a = Parser (Process e a)
 
-data FailReason = EOF | Other deriving (Show)
+data ErrorMsg = EOF | Other deriving (Show)
 
-class Failable {- with -} (reason :: Type) where
-  eof :: reason
+class Failing {- with reason -} (r :: Type) where
+  eof :: r 
 
-instance Failable {- with -} FailReason where
+instance Failing {- with -} ErrorMsg where
   eof = EOF
 
 {--
@@ -47,10 +44,7 @@ instance Failable {- with -} FailReason where
 --}
 instance Functor (Parser e) where
   fmap f (Parser mx) =
-    Parser $ h . mx
-   where
-    h = fmap g
-    g = fmap f
+    Parser $ ((f <$>) <$>) . mx
 
 {--
   APPLICATIVE
@@ -65,11 +59,10 @@ instance Applicative (Parser e) where
     Parser $ \s -> do
       Right (s, x)
 
---instance (Failable e) => Alternative (Parser e) where
-  --empty = Parser $ \_ -> Left eof
-  --(<|>) (Parser p1) (Parser p2) =
-    --Parser $ \s -> p1 s <|> p2 s
-
+-- instance (Failing e) => Alternative (Parser e) where
+-- empty = Parser $ \_ -> Left eof
+-- (<|>) (Parser p1) (Parser p2) =
+-- Parser $ \s -> p1 s <|> p2 s
 
 {--
    MONAD
@@ -84,11 +77,11 @@ instance Monad (Parser e) where
 unwrap' :: forall e a. Parser e a -> Process e a
 unwrap' (Parser x) = x
 
-unwrap :: Parser FailReason a -> Process FailReason a
+unwrap :: Parser ErrorMsg a -> Process ErrorMsg a
 unwrap = unwrap'
 
 -- | parses a single character from a string. Can fail.
-parseChar :: (Failable e) => Char -> Parser e Char
+parseChar :: (Failing e) => Char -> Parser e Char
 parseChar x =
   Parser $ \s -> do
     f s
@@ -109,18 +102,18 @@ parseString =
   Parser $ \s -> do
     Right (s, _pull s [])
 
-parseString1 :: (Failable e) => String -> Parser e String
+parseString1 :: (Failing e) => String -> Parser e String
 parseString1 = sequenceA . (<$>) parseChar
 
-parseString2 :: (Failable e) => String -> Parser e String
+parseString2 :: (Failing e) => String -> Parser e String
 parseString2 = traverse parseChar
 
---jsonBool :: Parser e JsonValue
---jsonBool = f <$> (parseString1 "true" <|> parseString1 "false")
-  --where
-    --f "true" = JsonBool True
-    --f "false" = JsonBool False
-    --f _       = undefined
+-- jsonBool :: Parser e JsonValue
+-- jsonBool = f <$> (parseString1 "true" <|> parseString1 "false")
+-- where
+-- f "true" = JsonBool True
+-- f "false" = JsonBool False
+-- f _       = undefined
 
 -- NOTE: no proper error reporting
 jsonValue :: Parser e JsonValue

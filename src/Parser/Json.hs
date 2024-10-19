@@ -19,9 +19,9 @@ data JsonValue
   | JsonObject [(String, JsonValue)]
   deriving (Show, Eq)
 
-newtype Parser a = Parser
-  { runParser :: String -> Maybe (String, a)
-  }
+type Action e a = String -> Maybe (e, a)
+
+newtype Parser a = Parser (Action String a)
 
 {--
   FUNCTOR

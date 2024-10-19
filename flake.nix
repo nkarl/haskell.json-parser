@@ -1,76 +1,37 @@
 {
-  description = "A Nix flake for a Haskell development environment.";
+  description = "A Nix flake for Haskell development environment";
 
   inputs = {
-    haskellNix.url = "github:input-output-hk/haskell.nix";
-    nixpkgs.follows = "haskellNix/nixpkgs-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   };
 
-  outputs = { self, nixpkgs, flake-utils, haskellNix, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
-
+  outputs = { self, nixpkgs, ... }:
     let
-      overlays = [
-        haskellNix.overlay (final: prev: {
-          haskell-json = final.haskell-nix.project' {
-            src = ./.;
-            compiler-nix-name = "ghc966";
 
-            shell.tools = {
-              cabal = {};
-              hlint = {};
-              stack = "3.1.1";
-              haskell-language-server = {};
-            };
-
-            shell.buildInputs = with pkgs; [
-              nixpkgs-fmt
-            ];
-          };
-        })
-      ];
-
-      pkgs = import nixpkgs { inherit system overlays; inherit (haskellNix) config; };
-
-      flake = pkgs.haskell-json.flake { };
+      system = "x86_64-linux";
 
     in
-      flake // { packages.default = flake.packages."hsjson:exe:hsjson"; });
-}      
+    {
+      devShells."${system}".default =
+        let
+          pkgs = import nixpkgs {
+            inherit system;
+          };
+          ghc_ver = "ghc966";
 
-#{
-  #description = "haskell json";
+        in
+        pkgs.mkShell {
+          packages = with pkgs; [
+            cabal-install
+            haskell.compiler.${ghc_ver}
+            haskell-language-server
+            hlint
+          ];
 
-  #inputs = {
-    #nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-  #};
-
-  #outputs =  { self, nixpkgs, ... }: let
-
-    #system = "x86_64-linux";
-
-  #in {
-    #devShells."${system}".default = let
-      #pkgs = import nixpkgs {
-        #inherit system;
-      #};
-
-      #packages = with pkgs; [
-        #cabal-install
-        #stack
-        #haskell.compiler.ghc8107
-        #haskell-language-server
-      #];
-
-    #in pkgs.runCommand "haskell-json" {
-      #buildInputs = packages;
-
-      #nativeBuildInputs = [ pkgs.makeWrapper ];
-    #} ''
-      #mkdir -p $out/bin/
-      #ln -s ${pkgs.ghc}/bin/ghc $out/bin/ghc
-      #wrapProgram $out/bin/ghc --prefix PATH : ${pkgs.lib.makeBinPath packages}
-    #'';
-  #};
-#}
+          shellHook = ''
+            echo "ghc `${pkgs.haskell.compiler.${ghc_ver}}/bin/ghc --version`"
+          '';
+        };
+      formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixpkgs-fmt;
+    };
+}
