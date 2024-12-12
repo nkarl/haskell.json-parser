@@ -67,6 +67,7 @@ executable haskell-json
         Parser.String,
         Parser.Json,
         Parser.JsonWithErrorHandling,
+        Lexer.Lexer,
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:

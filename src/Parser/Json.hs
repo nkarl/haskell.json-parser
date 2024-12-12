@@ -4,8 +4,7 @@
 
 module Parser.Json where
 
-import Control.Monad ((<=<), (>=>))
-import Test.HUnit
+import Control.Monad ((>=>))
 
 import Control.Applicative (Alternative (empty, (<|>)))
 import Prelude
@@ -21,14 +20,15 @@ data JsonValue
 
 type Action e a = String -> Maybe (e, a)
 
-newtype Parser a = Parser (Action String a)
+type ErrorMsg = String
+
+newtype Parser a = Parser (Action ErrorMsg a)
 
 {--
   FUNCTOR
 --}
 instance Functor Parser where
-  fmap f (Parser px) =
-    Parser $ h . px
+  fmap f (Parser px) = Parser $ h . px
    where
     h = fmap (fmap f)
 
@@ -45,25 +45,19 @@ instance Functor Parser where
 --}
 instance Applicative Parser where
   (<*>) (Parser pf) (Parser px) =
-    -- Parser $ \s -> do
-    --    (s1, f) <- pf s
-    --    (s2, x) <- px s1
-    --    Just (s2, f x)
-    -- Parser $ \s ->
-    --    pf s >>= \(s1, f) ->
-    --    px s1 >>= \(s2, x) ->
-    --    Just (s2, f x)
     Parser $
-      pf
-        >=> ( \(s1, f) ->
-                px s1 >>= \(s2, x) ->
-                  Just (s2, f x)
-            )
+      -- \s -> do
+      --    (s1, f) <- pf s
+      --    (s2, x) <- px s1
+      --    Just (s2, f x)
+      -- \s -> pf s >>= \(s1, f) -> px s1 >>= \(s2, x) -> Just (s2, f x)
+      pf >=> \(s1, f) -> px s1 >>= \(s2, x) -> Just (s2, f x)
   pure x =
     Parser $ \s -> Just (s, x)
 
 instance Alternative Parser where
-  empty = Parser $ const Nothing
+  empty =
+    Parser $ const Nothing
   (<|>) (Parser p1) (Parser p2) =
     Parser $ \s -> p1 s <|> p2 s
 
@@ -72,30 +66,31 @@ instance Alternative Parser where
 --}
 instance Monad Parser where
   (>>=) (Parser px) f =
-    Parser $ \s -> do
-      (s', x) <- px s
-      Parser g <- Just (f x)
-      g s'
+    Parser $
+      -- \s -> do
+      --    (s', x) <- px s
+      --    Parser g <- Just (f x)
+      --    g s'
+      px >=> \(s', x) -> Just (f x) >>= \(Parser g) -> g s'
 
 unwrap :: Parser a -> (String -> Maybe (String, a))
 unwrap (Parser x) = x
 
--- | parses a single character from a string.
+-- | parses and check a single character from a string.
 parseChar :: Char -> Parser Char
 parseChar x = Parser f
  where
-  f (y : ys) -- = Just (ys, y)
-    | x == y = Just (ys, y)
-    | otherwise = Nothing
   f [] = Nothing
+  f (c : cs)
+    | x == c = Just (cs, c)
+    | otherwise = Nothing
 
 pull :: [a] -> [a] -> [a]
 pull = foldr (:)
 
 parseString :: Parser String
 parseString =
-  Parser $ \s -> do
-    Just (s, pull s [])
+  Parser $ \s -> Just (s, pull s [])
 
 parseString1 :: String -> Parser String
 parseString1 = sequenceA . map parseChar
