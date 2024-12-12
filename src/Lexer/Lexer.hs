@@ -109,6 +109,7 @@ tokenizeKeyword = matchKeyword <$> (lexString1 "true" <|> lexString1 "false" <|>
   matchKeyword "true" = JsonBool True
   matchKeyword "false" = JsonBool False
   matchKeyword "null" = JsonNull
+  -- TODO: adds other JSON variants for braces, brackets and such
   matchKeyword _ = NotJsonKeyword
 
 -- NOTE: no proper error reporting
