@@ -1,12 +1,12 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
 {-# HLINT ignore "Use traverse" #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 module Lexer.Lexer where
 
 import Control.Monad ((>=>))
 
 import Control.Applicative (Alternative (empty, (<|>)))
+
 import Miscs.Miscs (Result (..))
 import Text.Pretty.Simple (pPrint)
 import Prelude
@@ -18,7 +18,7 @@ data JsonValue
   | JsonString String
   | JsonArray [JsonValue]
   | JsonObject [(String, JsonValue)]
-  | JsonOther
+  | NotJsonKeyword -- escape signal when matching for keywords `true`, `false` and `null` -- NOTE: be careful to avoid cycles
   deriving (Show, Eq)
 
 type Source = String
@@ -34,16 +34,20 @@ newtype Lexer a = Lexer (Lexing ErrorMsg a)
   FUNCTOR
 --}
 instance Functor Lexer where
-  fmap f (Lexer px) = Lexer $ h . px
+  f `fmap` (Lexer px) = Lexer $ h . px
    where
     h = fmap (fmap f)
 
 {--
    The composing style works for `fmap` because `f` is first-ordered.
    We only need to peel off the layers of `Lexer a` and then apply `f` to the inner most type.
-   NOTE: `Lexer a` is double-layered monad `m1 (m2 a)` where
-      `m1 :: Maybe`
-      `m2 :: Tuple`, more accurately the curried 2-tuple `(String, ...)`
+   NOTE: `Lexer a` is triple-layered monad `m1 (m2 (m3 a))` where
+      `m1 :: Lexer`
+      `m2 :: Maybe`
+      `m3 :: Tuple`, more accurately the curried 2-tuple `(String, ...)`
+
+   The outer most context `Lexer` is at the 3rd layer. Thus, we need to specify `fmap` twice to peel
+   off the 2 inner layers.
 --}
 
 {--
@@ -89,27 +93,27 @@ lexString :: Lexer String
 lexString =
   Lexer $ \s -> Just (s, pull s [])
 
+type Keyword = String
+
 -- | takes a pattern and match it against an input source (upon received by the lexing function).
-lexString1 :: String -> Lexer String
+lexString1 :: Keyword -> Lexer Keyword
 lexString1 = sequenceA . map lexChar
 
 -- | takes a pattern and match it against an input source (upon received by the lexing function).
-lexString2 :: String -> Lexer String
+lexString2 :: Keyword -> Lexer Keyword
 lexString2 = traverse lexChar
 
-jsonBool :: Lexer JsonValue
-jsonBool = matchKeyword <$> (lexString1 "true" <|> lexString1 "false")
+tokenizeKeyword :: Lexer JsonValue
+tokenizeKeyword = matchKeyword <$> (lexString1 "true" <|> lexString1 "false" <|> lexString1 "null")
  where
   matchKeyword "true" = JsonBool True
   matchKeyword "false" = JsonBool False
-  matchKeyword _ = JsonOther
+  matchKeyword "null" = JsonNull
+  matchKeyword _ = NotJsonKeyword
 
 -- NOTE: no proper error reporting
 jsonValue :: Lexer JsonValue
 jsonValue = undefined
-
-jsonNull :: Lexer JsonValue
-jsonNull = undefined
 
 test :: IO ()
 test = do
@@ -170,11 +174,16 @@ test = do
       }
   pPrint $
     Result
-      { title = "lex a substring `true` from `true` using traverse"
-      , value = show $ unwrap jsonBool "true,"
+      { title = "lex a substring `true` from `true,` using traverse"
+      , value = show $ unwrap tokenizeKeyword "true,"
       }
   pPrint $
     Result
-      { title = "lex a substring `false` from `false` using traverse"
-      , value = show $ unwrap jsonBool "false,"
+      { title = "lex a substring `false` from `false,` using traverse"
+      , value = show $ unwrap tokenizeKeyword "false,"
+      }
+  pPrint $
+    Result
+      { title = "lex a substring `null` from `null,` using traverse"
+      , value = show $ unwrap tokenizeKeyword "null,"
       }
